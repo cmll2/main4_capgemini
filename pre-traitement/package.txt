@@ -1,4 +1,0 @@
-os
-mediapipe
-csv
-numpy
