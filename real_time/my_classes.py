@@ -22,6 +22,7 @@ class Classifier:
             self.environment.names = clf_args[2]
     def real_time_loop(self):
         my_lib.main_loop(self.environment.nb_frames, self.environment.names, self.model)
+        #my_lib.main_loop_probas(self.environment.nb_frames, self.environment.names, self.model)
     def dump(self, model_path, args_path):
         my_lib.joblib.dump(self.model, model_path)
         args = [self.precision, self.environment.nb_frames, self.environment.names]
