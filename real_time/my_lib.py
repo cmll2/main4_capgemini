@@ -53,7 +53,7 @@ def initialisation(my_dataframe): #initialisation du classifieur
     NB_FRAMES = int((len(df.columns) - 1) / NB_COORDONNEES_TOTALES)
     df =df.fillna(0)
     Y = df[['class']]
-    X = df.iloc[:, 1:6001]
+    X = df.iloc[:, 1:len(df.columns)]
     X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=27, stratify=Y)
     names = coords_line(NB_COORDONNEES, NB_FRAMES)
     model = clf_train(X_train, y_train)
