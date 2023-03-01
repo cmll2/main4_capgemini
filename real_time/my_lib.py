@@ -9,6 +9,8 @@ import sklearn
 from sklearn import svm
 import csv
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 import mediapipe as mp 
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -18,7 +20,7 @@ mp_holistic = mp.solutions.holistic  # Mediapipe Solutions
 
 # ----------------------------------------- Variables ---------------------------------------------- #
 
-CAMERA_FPS = 30 # FPS de la caméra
+CAMERA_FPS = 20 # FPS de la caméra
 NB_COORDONNEES = 75 # nombre de points
 NB_COORDONNEES_TOTALES = 300 # nombre de coordonnées totales
 THRESHOLD = 0.5 # seuil de confiance pour la détection
@@ -105,7 +107,7 @@ def main_loop(nb_frames, names, model): # Première version de la boucle en temp
     sequence = []
     predictions = []
     cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FPS, 20)
+    cap.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
     # Set mediapipe model 
     with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
         while cap.isOpened():
@@ -142,7 +144,7 @@ def main_loop_probas(nb_frames, names, model): # Deuxième version de la boucle 
     sentence = []
     predictions = []
     cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FPS, 20)
+    cap.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
     # Set mediapipe model 
     with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
         while cap.isOpened():
