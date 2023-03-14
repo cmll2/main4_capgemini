@@ -14,7 +14,7 @@ def get_files_names(path): #fonction qui récupère les noms des fichiers à ana
     fichiers=[]
     for f in os.listdir(path):
         if (os.path.isfile(path + '/' + f) == False):   
-            fichiers.append(get_files_names(path + '/' + f + '/'))
+            fichiers += get_files_names(path + '/' + f + '/')
         fichiers.append(path + '/' + f)
     return fichiers
 
