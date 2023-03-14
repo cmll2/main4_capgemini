@@ -1,10 +1,13 @@
 import my_lib
 
 class dataset:
-    def __init__(self, data_path): #initialisation de l'environnement
+    def __init__(self, data_path, nb_frame_chosen = -1): #initialisation de l'environnement
         self.fichiers = my_lib.get_files_names(data_path)
-        self.nb_frames = my_lib.get_mean_frames(self.fichiers)
         self.num_coords = my_lib.NB_COORDS
+        if nb_frame_chosen == -1:
+            self.nb_frames = my_lib.get_mean_frames(self.fichiers)
+        else:
+            self.nb_frames = nb_frame_chosen
 
     def analyze_dataset(self, my_csv):
         my_csv = my_lib.csv_params(my_csv, self.nb_frames, self.num_coords)
