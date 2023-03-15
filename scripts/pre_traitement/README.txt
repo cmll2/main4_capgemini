@@ -8,8 +8,10 @@ si vous voulez le nombre de frame moyen de toutes les vidéos :
 
 python3 dataset_to_csv.py *chemin vers les videos*
 
-A noter que le script ne prend en compte que les fichiers .mp4
+Enfin, si vous voulez un csv avec les coordonnées normalisées : taper n ou normalize a la fin de la ligne de commande.
 
-ffmpeg -i /home/user/Desktop/sample.MOV /home/user/Desktop/sample.MP4 <- commande pour convertir un .mov en .mp4 dans la ligne de commande
+A noter que le script ne prend en compte que les fichiers .mp4.
+
+ffmpeg -i /home/user/Desktop/sample.MOV /home/user/Desktop/sample.MP4 <- commande pour convertir un .mov en .mp4 dans la ligne de commande.
 
 Voila !
