@@ -10,7 +10,6 @@ my_csv = 'extraction_csv/données.csv'
 # ------------------------------------- Initialisation du dataset -------------------- #
 
 print("Initialisation du dataset...")
-
 try : #si on veut un nombre de frames spécifique
     my_datas = my_class.dataset(sys.argv[1], sys.argv[2])
 except : 

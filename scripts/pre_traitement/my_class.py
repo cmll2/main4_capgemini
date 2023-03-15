@@ -13,5 +13,10 @@ class dataset:
         my_csv = my_lib.csv_params(my_csv, self.nb_frames, self.num_coords)
         my_csv = my_lib.main_loop(self.fichiers, self.nb_frames, my_csv)
         return my_csv
+    
+    def analyze_dataset_normalized(self, my_csv):
+        my_csv = my_lib.csv_params(my_csv, self.nb_frames, self.num_coords)
+        my_csv = my_lib.main_loop_normalize(self.fichiers, self.nb_frames, my_csv)
+        return my_csv
 
         
