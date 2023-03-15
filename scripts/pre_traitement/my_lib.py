@@ -15,7 +15,8 @@ def get_files_names(path): #fonction qui récupère les noms des fichiers à ana
     for f in os.listdir(path):
         if (os.path.isfile(path + '/' + f) == False):   
             fichiers += get_files_names(path + '/' + f + '/')
-        fichiers.append(path + '/' + f)
+        if f.endswith('.mp4'):
+            fichiers.append(path + '/' + f)
     return fichiers
 
 def get_mean_frames(fichiers): #fonction qui calcule le nombre de frames moyen de toutes les vidéos
