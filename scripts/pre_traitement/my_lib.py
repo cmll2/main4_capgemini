@@ -130,35 +130,39 @@ def main_loop(fichiers, nb_frame, my_csv): #fonction qui fait la boucle principa
 # -------------------------------------------------------- EXTRACTION DES COORDONNEES (NORMALISEES) --------------------------------------------------------------- #
 
 def extract_normalized_keypoints(image):
+    
     mp_holistic = mp.solutions.holistic
     with mp_holistic.Holistic(static_image_mode=True) as holistic:
         results = holistic.process(image)
-        Right_hand_mark = np.array([[res.x, res.y, res.z]for res in results.right_hand_landmarks.landmark])if results.right_hand_landmarks else np.zeros((21,3))
-        Left_hand_mark = np.array([[res.x, res.y, res.z]for res in results.left_hand_landmarks.landmark]) if results.left_hand_landmarks else np.zeros((21,3))
+        right_hand_mark = np.array([[res.x, res.y, res.z]for res in results.right_hand_landmarks.landmark])if results.right_hand_landmarks else np.zeros((21,3))
+        left_hand_mark = np.array([[res.x, res.y, res.z]for res in results.left_hand_landmarks.landmark]) if results.left_hand_landmarks else np.zeros((21,3))
         pose = np.array([[res.x,res.y,res.z]for res in results.pose_landmarks.landmark]) if results.pose_landmarks else np.zeros((33,3))
     
-        #on fait les calcule pour avoir les valeur des distance dans le monde pixel
+    #définition de l'origine en fonction des épaules & déplacement des coordonnées
 
-        depx =  abs(pose[11][0] - pose[12][0]) #distance epaule 
-        epaule1 = np.array(pose[12][0:3])
-        epaule2 = np.array(pose[11][0:3])
-        origine=(epaule1+epaule2)/2
-        dornose=abs(pose[0][1]-origine[1])
-        dz=depx  #comme on sait pas encore comment est estimé la valeur z on prend meme valeur que x
-        dnormaliser=np.array([depx,dornose,dz])
-        normaliser=np.array([40,20,40])
-    
-        shifted_hand_marks_coordr=Right_hand_mark-origine #right
-        shifted_hand_marks_coordl=Left_hand_mark-origine  #left
-        shifted_pose_marks_coord=pose-origine             #pose 
-    
-        hand_marks_coord_normalizedr = shifted_hand_marks_coordr*normaliser/dnormaliser  #right hand
-        hand_marks_coord_normalizedl = shifted_hand_marks_coordl*normaliser/dnormaliser  #left hand
-        pose_marks_coord_normalized = shifted_pose_marks_coord*normaliser/dnormaliser    #pose
-   #     print(hand_marks_coord_normalizedr)
-        #les valeurs retournées ne sont pas sous forme de vecteur utilise methode .flatten() pour vecteur.
-        return list(np.concatenate(( (hand_marks_coord_normalizedr/np.linalg.norm(hand_marks_coord_normalizedr[...,:-1],axis=1).reshape(21,1)).flatten(), (hand_marks_coord_normalizedl/np.linalg.norm(hand_marks_coord_normalizedl[...,:-1],axis=1).reshape(21,1)).flatten(), (pose_marks_coord_normalized/np.linalg.norm(pose_marks_coord_normalized[...,:-1],axis=1).reshape(33,1)).flatten() ), axis=None))
-    
+    epaule1 = np.array(pose[12])
+    epaule2 = np.array(pose[11])
+    origine = (epaule1+epaule2)/2    
+
+    shifted_right_hand_marks_coord=right_hand_mark-origine 
+    shifted_left_hand_marks_coord=left_hand_mark-origine  
+    shifted_pose_marks_coord=pose-origine
+
+    #normalisation des distances par rapport à la distance entre les épaules fixée à 2 et celle de l'origine au nez fixée à 1
+
+    x_epaules = abs(shifted_pose_marks_coord[12][0])
+    y_nez = abs(shifted_pose_marks_coord[0][1])
+
+    shifted_right_hand_marks_coord[0:][:1] = shifted_right_hand_marks_coord[0:][:1]/x_epaules
+    shifted_left_hand_marks_coord[0:][:1] = shifted_left_hand_marks_coord[0:][:1]/x_epaules
+    shifted_pose_marks_coord[0:][:1] = shifted_pose_marks_coord[0:][:1]/x_epaules
+
+    shifted_right_hand_marks_coord[0:][1:2] = shifted_right_hand_marks_coord[0:][1:2]/y_nez
+    shifted_left_hand_marks_coord[0:][1:2] = shifted_left_hand_marks_coord[0:][1:2]/y_nez
+    shifted_pose_marks_coord[0:][1:2] = shifted_pose_marks_coord[0:][1:2]/y_nez
+
+    return list(shifted_pose_marks_coord.flatten()) + list(shifted_right_hand_marks_coord.flatten()) + list(shifted_left_hand_marks_coord.flatten())
+
 def analyze_normalized_frame(video, sec): #fonction qui analyse une frame d'une vidéo à un temps donné
     results = list([])
     with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
