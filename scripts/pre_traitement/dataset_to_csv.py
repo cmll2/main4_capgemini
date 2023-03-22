@@ -1,5 +1,6 @@
 # ------------------------------------- Importation des modules ---------------------- #
 
+print("Librairies importation...")
 import my_class
 import sys
 
