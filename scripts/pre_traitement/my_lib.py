@@ -129,7 +129,7 @@ def main_loop(fichiers, nb_frame, my_csv): #fonction qui fait la boucle principa
 
 # -------------------------------------------------------- EXTRACTION DES COORDONNEES (NORMALISEES) --------------------------------------------------------------- #
 
-def extract_normalized_keypoints(image):
+def extract_and_normalize_keypoints(image):
     
     mp_holistic = mp.solutions.holistic
     with mp_holistic.Holistic(static_image_mode=True) as holistic:
@@ -169,7 +169,7 @@ def analyze_normalized_frame(video, sec): #fonction qui analyse une frame d'une 
         video.set(cv2.CAP_PROP_POS_MSEC,sec*1000)
         verif,image = video.read()
         if verif :
-            results = extract_normalized_keypoints(image)
+            results = extract_and_normalize_keypoints(image)
             cv2.destroyAllWindows()
             return verif, results
     return verif, results
@@ -180,12 +180,12 @@ def main_loop_normalize(fichiers, nb_frame, my_csv): #fonction qui fait la boucl
         sec = 0
         results = list([])
         video, framerate = load_video_and_find_framerate(videos,nb_frame)
-        success, extracted_coords = analyze_frame(video, sec)
+        success, extracted_coords = analyze_normalized_frame(video, sec)
         if success :
             results += extracted_coords
         while success :
             sec = sec + framerate
-            success, extracted_coords = analyze_frame(video, sec)
+            success, extracted_coords = analyze_normalized_frame(video, sec)
             if success :
                 results += extracted_coords
         results.insert(0, mot)
