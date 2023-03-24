@@ -153,13 +153,19 @@ def extract_and_normalize_keypoints(image):
     x_epaules = abs(shifted_pose_marks_coord[12][0])
     y_nez = abs(shifted_pose_marks_coord[0][1])
 
-    shifted_right_hand_marks_coord[0:][:1] = shifted_right_hand_marks_coord[0:][:1]/x_epaules
-    shifted_left_hand_marks_coord[0:][:1] = shifted_left_hand_marks_coord[0:][:1]/x_epaules
-    shifted_pose_marks_coord[0:][:1] = shifted_pose_marks_coord[0:][:1]/x_epaules
+    shifted_right_hand_marks_coord[0:][0] = shifted_right_hand_marks_coord[0:][0]/x_epaules
+    shifted_left_hand_marks_coord[0:][0] = shifted_left_hand_marks_coord[0:][0]/x_epaules
+    shifted_pose_marks_coord[0:][0] = shifted_pose_marks_coord[0:][0]/x_epaules
 
-    shifted_right_hand_marks_coord[0:][1:2] = shifted_right_hand_marks_coord[0:][1:2]/y_nez
-    shifted_left_hand_marks_coord[0:][1:2] = shifted_left_hand_marks_coord[0:][1:2]/y_nez
-    shifted_pose_marks_coord[0:][1:2] = shifted_pose_marks_coord[0:][1:2]/y_nez
+    shifted_right_hand_marks_coord[0:][1] = shifted_right_hand_marks_coord[0:][1]/y_nez
+    shifted_left_hand_marks_coord[0:][1] = shifted_left_hand_marks_coord[0:][1]/y_nez
+    shifted_pose_marks_coord[0:][1] = shifted_pose_marks_coord[0:][1]/y_nez
+
+    #on normalise les coordonnées z par le décalage en espace entre deux frames
+
+    shifted_right_hand_marks_coord[0:][2] = z_shift(shifted_right_hand_marks_coord[0:][2])
+    shifted_left_hand_marks_coord[0:][2] = z_shift(shifted_left_hand_marks_coord[0:][2])
+    shifted_pose_marks_coord[0:][2] = z_shift(shifted_pose_marks_coord[0:][2])
 
     return list(shifted_pose_marks_coord.flatten()) + list(shifted_right_hand_marks_coord.flatten()) + list(shifted_left_hand_marks_coord.flatten())
 
@@ -193,3 +199,10 @@ def main_loop_normalize(fichiers, nb_frame, my_csv): #fonction qui fait la boucl
                 csv_writer = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
                 csv_writer.writerow(results)
     return my_csv
+
+def z_shift(my_array):  #fonction qui prend les coordonnées en z et renvoie juste le décalage entre deux frames
+    length = len(my_array)
+    new_array = np.zeros(length)
+    for i in range(1,length):
+        new_array[i] = my_array[i] - my_array[i-1]
+    return new_array
