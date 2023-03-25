@@ -1,5 +1,6 @@
 # -------------------------------------------------------- IMPORTS ---------------------------------------------------------------------------- #
 
+import math
 import sys
 import cv2
 import os
@@ -8,10 +9,12 @@ from os.path import isfile, join
 import csv
 import mediapipe as mp 
 from moviepy.editor import VideoFileClip
+from decimal import *
 
 mp_drawing = mp.solutions.drawing_utils  # Drawing helpers
 mp_holistic = mp.solutions.holistic  # Mediapipe Solutions
 NB_COORDS = 75
+getcontext().prec = 4
 
 # -------------------------------------------------------- ANALYSE UTILISATEUR---------------------------------------------------------------------------- #
 
@@ -71,7 +74,7 @@ def load_video_and_find_framerate(my_video,nb_frame): #fonction qui charge une v
     video = cv2.VideoCapture(my_video)
     #duree = video.get(cv2.CAP_PROP_FRAME_COUNT)/video.get(cv2.CAP_PROP_FPS)
     duree = dureeMPY(my_video)
-    framerate = duree/nb_frame
+    framerate = float(Decimal(duree)/Decimal(nb_frame))
     # print(duree, framerate)
     return video, framerate
 
@@ -99,7 +102,7 @@ def analyze_frame(video, sec): #fonction qui analyse une frame d'une vidéo à u
     return verif, results
 
 def extract_keypoints(results): #Fonction qui extrait les coordonnées des points d'intérêt
-    pose = list(np.array([[res.x, res.y, res.z] for res in results.pose_landmarks.landmark]).flatten() if results.pose_landmarks else np.zeros(33*4))
+    pose = list(np.array([[res.x, res.y, res.z] for res in results.pose_landmarks.landmark]).flatten() if results.pose_landmarks else np.zeros(33*3))
     #face = np.array([[res.x, res.y, res.z] for res in results.face_landmarks.landmark]).flatten() if results.face_landmarks else np.zeros(468*3)
     lh = list(np.array([[res.x, res.y, res.z] for res in results.left_hand_landmarks.landmark]).flatten() if results.left_hand_landmarks else np.zeros(21*3))
     rh = list(np.array([[res.x, res.y, res.z] for res in results.right_hand_landmarks.landmark]).flatten() if results.right_hand_landmarks else np.zeros(21*3))

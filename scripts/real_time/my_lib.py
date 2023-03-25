@@ -20,9 +20,9 @@ mp_holistic = mp.solutions.holistic  # Mediapipe Solutions
 
 # ----------------------------------------- Variables ---------------------------------------------- #
 
-CAMERA_FPS = 20 # FPS de la caméra
-NB_COORDONNEES = 75 # nombre de points
-NB_COORDONNEES_TOTALES = 300 # nombre de coordonnées totales
+CAMERA_FPS = 10 # FPS de la caméra
+NB_POINTS = 75 # nombre de points
+NB_COORDONNEES_TOTALES = NB_POINTS * 3 # nombre de coordonnées totales
 THRESHOLD = 0.5 # seuil de confiance pour la détection
 
 # ----------------------------------------- Initialisation ----------------------------------------- #
@@ -32,7 +32,7 @@ def coords_line(nb_coords, nb_frames): #pour les prédictions, le label des coor
     for i in range (1,nb_frames+1): 
         for val in range(1, nb_coords+1):
             names += ['x' + str (val) + '_' + str(i), 'y' + str (val) + '_' + str(i),
-                        'z' + str (val) + '_' + str(i), 'v' + str (val) + '_' + str(i)]
+                        'z' + str (val) + '_' + str(i)]
     return names
 
 def clf_train(X_train, y_train): #entrainement du modèle
@@ -54,8 +54,8 @@ def initialisation(my_dataframe): #initialisation du classifieur
     df =df.fillna(0)
     Y = df[['class']]
     X = df.iloc[:, 1:len(df.columns)]
-    X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=27, stratify=Y)
-    names = coords_line(NB_COORDONNEES, NB_FRAMES)
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, random_state=27, stratify=Y)
+    names = coords_line(NB_POINTS, NB_FRAMES)
     model = clf_train(X_train, y_train)
     precision, recall, f1 = clf_results(X_test, y_test, model)
 
@@ -95,10 +95,10 @@ def draw_styled_landmarks(image, results): #Fonction pour dessiner les points de
                             
 def extract_keypoints(results): #Fonction pour extraire les coordonnées des points de repère
 
-    pose = (np.array([[res.x, res.y, res.z, res.visibility] for res in results.pose_landmarks.landmark]).flatten() if results.pose_landmarks else np.zeros(33*4))
+    pose = (np.array([[res.x, res.y, res.z] for res in results.pose_landmarks.landmark]).flatten() if results.pose_landmarks else np.zeros(33*3))
     #face = np.array([[res.x, res.y, res.z] for res in results.face_landmarks.landmark]).flatten() if results.face_landmarks else np.zeros(468*3)
-    lh = (np.array([[res.x, res.y, res.z, res.visibility] for res in results.left_hand_landmarks.landmark]).flatten() if results.left_hand_landmarks else np.zeros(21*4))
-    rh = (np.array([[res.x, res.y, res.z, res.visibility] for res in results.right_hand_landmarks.landmark]).flatten() if results.right_hand_landmarks else np.zeros(21*4))
+    lh = (np.array([[res.x, res.y, res.z] for res in results.left_hand_landmarks.landmark]).flatten() if results.left_hand_landmarks else np.zeros(21*3))
+    rh = (np.array([[res.x, res.y, res.z] for res in results.right_hand_landmarks.landmark]).flatten() if results.right_hand_landmarks else np.zeros(21*3))
     return np.concatenate([pose, lh, rh])
 
 # --------------------------------------- Boucle en temps réel ------------------------------------- #
@@ -118,7 +118,7 @@ def main_loop(nb_frames, names, model): # Première version de la boucle en temp
             # Draw landmarks
             draw_styled_landmarks(image, results)
             # 2. Prediction logic
-            keypoints = extract_keypoints(results)
+            keypoints = extract_and_normalize_keypoints(results)
             sequence.append(keypoints)
             sequence = sequence[-nb_frames:]
             res = ' '
@@ -126,7 +126,7 @@ def main_loop(nb_frames, names, model): # Première version de la boucle en temp
                 prediction = np.array(sequence).flatten().reshape(1, -1)
                 predictions_df = pd.DataFrame(data = prediction, columns = names)
                 res = model.predict(predictions_df)[0]
-
+                # print(model.predict_proba(predictions_df)[0])
             cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
             cv2.putText(image, ' '.join(res), (3,30), 
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)           
@@ -138,54 +138,64 @@ def main_loop(nb_frames, names, model): # Première version de la boucle en temp
         cap.release()
         cv2.destroyAllWindows()
 
-def main_loop_probas(nb_frames, names, model): # Deuxième version de la boucle en temps réel, avec les probabilités
-    actions = np.array(['adresse','affaire','aller','ami_amie','autre','beaucoup','bonjour','chocolat','comprendre','demander','dieu','donc','dormir','enceinte','faire','famille','finir','gens','heure','ils_elles','interdire','jamais','jour','laisser','lentement','marcher_marche','merci','mourir_mort','nous_on','nuit','ou','payer','penser','personne','peu','pleuvoir_pluie','portugal','pour','prendre','question','quoi','raison_connaissance','rencontrer_rencontre','rester','rien','rue_route','sac','soeur_nonne','soleil','surprendre_surprise','temps','toujours','travail','trop','trouver','turquie','vache','vivre_vie','voir','vouloir'])
-    sequence = []
-    sentence = []
-    predictions = []
-    cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
-    # Set mediapipe model 
-    with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
-        while cap.isOpened():
-            # Read feed
-            ret, frame = cap.read()
-            # Make detections
-            image, results = mediapipe_detection(frame, holistic)
-            # Draw landmarks
-            draw_styled_landmarks(image, results)
-            # 2. Prediction logic
-            keypoints = extract_keypoints(results)
-            sequence.append(keypoints)
-            sequence = sequence[-nb_frames:]
-            res = ' '
-            if len(sequence) == nb_frames:
-                prediction = np.array(sequence).flatten().reshape(1, -1)
-                predictions_df = pd.DataFrame(data = prediction, columns = names)
-                # res = model.predict(predictions_df)[0]
-                res = model.predict_proba(predictions_df)[0]
-                print(res)
-                predictions.append(np.argmax(res))
-            #3. Viz logic
-                if np.unique(predictions[-10:])[0]==np.argmax(res): 
-                    if res[np.argmax(res)] > THRESHOLD: 
-                        
-                        if len(sentence) > 0: 
-                            if actions[np.argmax(res)] != sentence[-1]:
-                                sentence.append(actions[np.argmax(res)])
-                        else:
-                            sentence.append(actions[np.argmax(res)])
+# --------------------------------------------------- Normalisation ------------------------------------------------------- #
 
-                if len(sentence) > 5: 
-                    sentence = sentence[-5:]
+def extract_and_normalize_keypoints(results):
+    
+    right_hand_mark = np.array([[res.x, res.y, res.z]for res in results.right_hand_landmarks.landmark])if results.right_hand_landmarks else np.zeros((21,3))
+    left_hand_mark = np.array([[res.x, res.y, res.z]for res in results.left_hand_landmarks.landmark]) if results.left_hand_landmarks else np.zeros((21,3))
+    pose = np.array([[res.x,res.y,res.z]for res in results.pose_landmarks.landmark]) if results.pose_landmarks else np.zeros((33,3))
 
-            cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
-            cv2.putText(image, ' '.join(actions[np.argmax(res)] + ' ' + str(res[np.argmax(res)])), (3,30), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)           
-            # Show to screen
-            cv2.imshow('OpenCV Feed', image)
-            # Break gracefully
-            if cv2.waitKey(10) & 0xFF == ord('q'):
-                break
-        cap.release()
-        cv2.destroyAllWindows()
+    #définition de l'origine en fonction des épaules & déplacement des coordonnées
+
+    epaule1 = np.array(pose[12])
+    epaule2 = np.array(pose[11])
+    origine = (epaule1+epaule2)/2    
+
+    shifted_right_hand_marks_coord=right_hand_mark-origine 
+    shifted_left_hand_marks_coord=left_hand_mark-origine  
+    shifted_pose_marks_coord=pose-origine
+
+    #normalisation des distances par rapport à la distance entre les épaules fixée à 2 et celle de l'origine au nez fixée à 1
+
+    x_epaules = abs(shifted_pose_marks_coord[12][0])
+    y_nez = abs(shifted_pose_marks_coord[0][1])
+
+    shifted_right_hand_marks_coord[0:][0] = shifted_right_hand_marks_coord[0:][0]/x_epaules
+    shifted_left_hand_marks_coord[0:][0] = shifted_left_hand_marks_coord[0:][0]/x_epaules
+    shifted_pose_marks_coord[0:][0] = shifted_pose_marks_coord[0:][0]/x_epaules
+
+    shifted_right_hand_marks_coord[0:][1] = shifted_right_hand_marks_coord[0:][1]/y_nez
+    shifted_left_hand_marks_coord[0:][1] = shifted_left_hand_marks_coord[0:][1]/y_nez
+    shifted_pose_marks_coord[0:][1] = shifted_pose_marks_coord[0:][1]/y_nez
+
+    #on normalise les coordonnées z par le décalage en espace entre deux frames
+
+    shifted_right_hand_marks_coord[0:][2] = z_shift(shifted_right_hand_marks_coord[0:][2])
+    shifted_left_hand_marks_coord[0:][2] = z_shift(shifted_left_hand_marks_coord[0:][2])
+    shifted_pose_marks_coord[0:][2] = z_shift(shifted_pose_marks_coord[0:][2])
+
+    shifted_left_hand_marks_coord[np.isnan(shifted_left_hand_marks_coord)] = 0
+    shifted_right_hand_marks_coord[np.isnan(shifted_right_hand_marks_coord)] = 0
+    shifted_pose_marks_coord[np.isnan(shifted_pose_marks_coord)] = 0
+
+    return list(shifted_pose_marks_coord.flatten()) + list(shifted_right_hand_marks_coord.flatten()) + list(shifted_left_hand_marks_coord.flatten())
+
+def z_shift(my_array):  #fonction qui prend les coordonnées en z et renvoie juste le décalage entre deux frames
+    length = len(my_array)
+    new_array = np.zeros(length)
+    for i in range(1,length):
+        new_array[i] = my_array[i] - my_array[i-1]
+    return new_array
+
+# --------------------------------------------------- Implémentation de la standardisation ------------------------------------------------------- #
+
+def standardize(df):
+    df_standardized = df.copy()
+    mean = []
+    std = []
+    for column in df_standardized.columns[1:]:
+        mean.append(df_standardized[column][:1].mean())
+        std.append(df_standardized[column][:1].std())
+        df_standardized[column][:1] = (df_standardized[column][:1] - df_standardized[column][:1].mean()) / df_standardized[column][:1].std()
+    return df_standardized, mean, std
