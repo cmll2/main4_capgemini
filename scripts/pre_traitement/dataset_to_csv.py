@@ -1,5 +1,6 @@
 # ------------------------------------- Importation des modules ---------------------- #
 
+print("Librairies importation...")
 import my_class
 import sys
 
@@ -17,12 +18,9 @@ my_csv = 'extraction_csv/données.csv'
 print("Initialisation du dataset...")
 try : #si on veut un nombre de frames spécifique
     my_datas = my_class.dataset(sys.argv[1], normalize, nb_frame)
-except : 
-    try : #si on veut le nombre de frames moyen
-        my_datas = my_class.dataset(sys.argv[1], normalize)
-    except :
-        print("Error : enter a valid path to your video dataset")
-        sys.exit()
+except :
+    print("Error : enter a valid path to your video dataset")
+    sys.exit()
 print("Dataset initialisé !")
 
 

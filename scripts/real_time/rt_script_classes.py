@@ -1,7 +1,7 @@
 # ----------------------------------------- MAIN4-Capgemini --------------------------------------------- #
 
 # ----------------------------------------- Imports ----------------------------------------------------- #
-print("Libraries importation...")
+print("Librairies importation...")
 import sys
 import my_classes
 print("Program start")

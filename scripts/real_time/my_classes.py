@@ -10,12 +10,12 @@ class Environment:
 class Classifier:
     def __init__(self, object, clf_args = 0): #initialisation du classifieur
         if (isinstance(object, my_lib.pd.DataFrame)):
-            self.environment = Environment(my_lib.CAMERA_FPS, my_lib.NB_COORDONNEES, my_lib.NB_COORDONNEES_TOTALES, my_lib.THRESHOLD)
+            self.environment = Environment(my_lib.CAMERA_FPS, my_lib.NB_POINTS, my_lib.NB_COORDONNEES_TOTALES, my_lib.THRESHOLD)
             nb_frames, names, self.model, self.precision, self.recall, self.f1 = my_lib.initialisation(object)
             self.environment.nb_frames = nb_frames
             self.environment.names = names
         else:
-            self.environment = Environment(my_lib.CAMERA_FPS, my_lib.NB_COORDONNEES, my_lib.NB_COORDONNEES_TOTALES, my_lib.THRESHOLD)
+            self.environment = Environment(my_lib.CAMERA_FPS, my_lib.NB_POINTS, my_lib.NB_COORDONNEES_TOTALES, my_lib.THRESHOLD)
             self.model = object
             self.precision = clf_args[0]
             self.environment.nb_frames = clf_args[1]
