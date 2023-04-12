@@ -17,6 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_score, recall_score, f1_score
 mp_drawing = mp.solutions.drawing_utils  # Drawing helpers
 mp_holistic = mp.solutions.holistic  # Mediapipe Solutions
+from sklearn.preprocessing import StandardScaler
 
 # ----------------------------------------- Variables ---------------------------------------------- #
 
@@ -51,7 +52,6 @@ def clf_results(X_test, y_test, model): #résultats du modèle
 def initialisation(my_dataframe): #initialisation du classifieur
     df = my_dataframe
     NB_FRAMES = int((len(df.columns) - 1) / NB_COORDONNEES_TOTALES)
-    df =df.fillna(0)
     Y = df[['class']]
     X = df.iloc[:, 1:len(df.columns)]
     X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, random_state=27, stratify=Y)
@@ -124,6 +124,7 @@ def main_loop(nb_frames, names, model): # Première version de la boucle en temp
             res = ' '
             if len(sequence) == nb_frames:
                 prediction = np.array(sequence).flatten().reshape(1, -1)
+                prediction = standardize_row(prediction)
                 predictions_df = pd.DataFrame(data = prediction, columns = names)
                 res = model.predict(predictions_df)[0]
                 # print(model.predict_proba(predictions_df)[0])
@@ -190,12 +191,21 @@ def z_shift(my_array):  #fonction qui prend les coordonnées en z et renvoie jus
 
 # --------------------------------------------------- Implémentation de la standardisation ------------------------------------------------------- #
 
-def standardize(df):
-    df_standardized = df.copy()
-    mean = []
-    std = []
-    for column in df_standardized.columns[1:]:
-        mean.append(df_standardized[column][:1].mean())
-        std.append(df_standardized[column][:1].std())
-        df_standardized[column][:1] = (df_standardized[column][:1] - df_standardized[column][:1].mean()) / df_standardized[column][:1].std()
-    return df_standardized, mean, std
+def standardize_df(df):
+    Y = df[['class']]
+    X=df.iloc[:, 1:len(df.columns)]
+    df.fillna(0, inplace=True)
+    scaler = StandardScaler()
+    scaler.fit_transform(X)
+    mean=scaler.mean_
+    std=scaler.var_
+    newX=scaler.transform(X)
+    tableau=np.hstack((Y,newX))
+    #creer un dataframe avec les nouvelles valeurs, toujours les mêmes classes et les mêmes noms de colonnes
+    newdf=pd.DataFrame(tableau, columns=df.columns)
+    return newdf,mean,std
+
+def standardize_row(row, mean, std):
+    for i in range(0,len(row)):
+        row[i] = (row[i] - mean[i]) / std[i]
+    return row

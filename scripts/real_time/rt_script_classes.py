@@ -6,9 +6,9 @@ import sys
 import my_classes
 print("Program start")
 #------------------------------------------ CSV ----------------------------------------------------- #
-try : #si on a un csv en argument
+try :
     df = my_classes.my_lib.pd.read_csv(sys.argv[1]) # charger le csv
-    print("Data loaded, training the classifier...")
+    print("Data loaded")
     classifier = my_classes.Classifier(df) # initialiser le classifieur
     print("Classifier accuracy : ", classifier.precision, " Recall : ", classifier.recall, " F1-Score : ", classifier.f1)
     print("Saving the model and the args...")
