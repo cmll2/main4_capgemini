@@ -51,6 +51,7 @@ def clf_results(X_test, y_test, model): #résultats du modèle
 
 def initialisation(my_dataframe): #initialisation du classifieur
     df = my_dataframe
+    df.fillna(0, inplace=True)
     NB_FRAMES = int((len(df.columns) - 1) / NB_COORDONNEES_TOTALES)
     Y = df[['class']]
     X = df.iloc[:, 1:len(df.columns)]
@@ -103,7 +104,7 @@ def extract_keypoints(results): #Fonction pour extraire les coordonnées des poi
 
 # --------------------------------------- Boucle en temps réel ------------------------------------- #
 
-def main_loop(nb_frames, names, model): # Première version de la boucle en temps réel
+def main_loop(nb_frames, names, model, mean, std): # Première version de la boucle en temps réel
     sequence = []
     predictions = []
     cap = cv2.VideoCapture(0)
@@ -124,7 +125,7 @@ def main_loop(nb_frames, names, model): # Première version de la boucle en temp
             res = ' '
             if len(sequence) == nb_frames:
                 prediction = np.array(sequence).flatten().reshape(1, -1)
-                prediction = standardize_row(prediction)
+                prediction = standardize_row(prediction, mean, std)
                 predictions_df = pd.DataFrame(data = prediction, columns = names)
                 res = model.predict(predictions_df)[0]
                 # print(model.predict_proba(predictions_df)[0])
