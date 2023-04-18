@@ -128,7 +128,7 @@ def main_loop(nb_frames, names, model, mean, std): # Première version de la bou
                 prediction = standardize_row(prediction, mean, std)
                 predictions_df = pd.DataFrame(data = prediction, columns = names)
                 res = model.predict(predictions_df)[0]
-                # print(model.predict_proba(predictions_df)[0])
+                #print(model.predict_proba(predictions_df)[0])
             cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
             cv2.putText(image, ' '.join(res), (3,30), 
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)           
