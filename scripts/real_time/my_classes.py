@@ -26,7 +26,7 @@ class Classifier:
             self.environment.mean = clf_args[3]
             self.environment.std = clf_args[4]
     def real_time_loop(self):
-        my_lib.main_loop(self.environment.nb_frames, self.environment.names, self.model, self.environment.mean, self.environment.std)
+        my_lib.main_loop_wait(self.environment.nb_frames, self.environment.names, self.model, self.environment.mean, self.environment.std)
         #my_lib.main_loop_probas(self.environment.nb_frames, self.environment.names, self.model)
     def dump(self, model_path, args_path):
         my_lib.joblib.dump(self.model, model_path)

@@ -208,5 +208,56 @@ def standardize_df(df):
 
 def standardize_row(row, mean, std):
     for i in range(0,len(row)):
-        row[i] = (row[i] - mean[i]) / std[i]
+        row[i] = (row[i] - mean[i]) / std[i] if not std[i] == 0 else 0
     return row
+
+# ----------------------------------------------------------------- loop with wait keys ------------------------------------------------------------ #
+
+def main_loop_wait(nb_frames, names, model, mean, std): # Première version de la boucle en temps réel
+    sequence = []
+    predictions = []
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
+    # Set mediapipe model 
+    with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+        while cap.isOpened():
+            # Read feed
+            ret, frame = cap.read()
+            # Make detections
+            image, results = mediapipe_detection(frame, holistic)
+            # Draw landmarks
+            draw_styled_landmarks(image, results)
+            # 2. Prediction logic
+            keypoints = extract_and_normalize_keypoints(results)
+            sequence.append(keypoints)
+            res = ' '
+            if len(sequence) == nb_frames:
+                prediction = np.array(sequence).flatten().reshape(1, -1)
+                prediction = standardize_row(prediction, mean, std)
+                predictions_df = pd.DataFrame(data = prediction, columns = names)
+                res = model.predict(predictions_df)[0]
+                sequence = []
+
+            if res != ' ':
+                cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
+                cv2.putText(image, ' '.join("mot : " + res), (3,30), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA) 
+                cv2.imshow('OpenCV Feed', image) 
+                cv2.waitKey(1000)
+                cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
+                cv2.putText(image, ' '.join("Signez bientôt"), (3,30), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+                cv2.imshow('OpenCV Feed', image) 
+                cv2.waitKey(700)
+                res = ' '
+            else :
+                cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
+                cv2.putText(image, ' '.join("Signez"), (3,30), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA) 
+                cv2.imshow('OpenCV Feed', image)
+            # Show to screen
+            # Break gracefully
+            if cv2.waitKey(10) & 0xFF == ord('q'):
+                break
+        cap.release()
+        cv2.destroyAllWindows()
