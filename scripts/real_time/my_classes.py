@@ -11,7 +11,10 @@ class Classifier:
     def __init__(self, object, clf_args = 0): #initialisation du classifieur
         if (isinstance(object, my_lib.pd.DataFrame)):
             print("Standardizing the data...")
-            standardized_df, mean, std = my_lib.standardize_df(object)
+            standardized_df = object
+            mean = []
+            std = []
+            #standardized_df, mean, std = my_lib.standardize_df(object)
             self.environment = Environment(my_lib.CAMERA_FPS, my_lib.NB_POINTS, my_lib.NB_COORDONNEES_TOTALES, mean, std)
             print("Training the model...")
             nb_frames, names, self.model, self.precision, self.recall, self.f1 = my_lib.initialisation(standardized_df)

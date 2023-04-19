@@ -233,11 +233,11 @@ def main_loop_wait(nb_frames, names, model, mean, std): # Première version de l
             res = ' '
             if len(sequence) == nb_frames:
                 prediction = np.array(sequence).flatten().reshape(1, -1)
-                prediction = standardize_row(prediction, mean, std)
+               # prediction = standardize_row(prediction, mean, std)
                 predictions_df = pd.DataFrame(data = prediction, columns = names)
                 res = model.predict(predictions_df)[0]
                 sequence = []
-
+            #wait logic
             if res != ' ':
                 cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
                 cv2.putText(image, ' '.join("mot : " + res), (3,30), 
@@ -245,7 +245,7 @@ def main_loop_wait(nb_frames, names, model, mean, std): # Première version de l
                 cv2.imshow('OpenCV Feed', image) 
                 cv2.waitKey(1000)
                 cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
-                cv2.putText(image, ' '.join("Signez bientôt"), (3,30), 
+                cv2.putText(image, ' '.join("Signez bientot"), (3,30), 
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
                 cv2.imshow('OpenCV Feed', image) 
                 cv2.waitKey(700)
