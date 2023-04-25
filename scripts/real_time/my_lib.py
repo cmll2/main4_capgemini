@@ -171,23 +171,24 @@ def extract_and_normalize_keypoints(results):
     shifted_left_hand_marks_coord[0:][1] = shifted_left_hand_marks_coord[0:][1]/y_nez
     shifted_pose_marks_coord[0:][1] = shifted_pose_marks_coord[0:][1]/y_nez
 
-    #on normalise les coordonnées z par le décalage en espace entre deux frames
-
-    shifted_right_hand_marks_coord[0:][2] = z_shift(shifted_right_hand_marks_coord[0:][2])
-    shifted_left_hand_marks_coord[0:][2] = z_shift(shifted_left_hand_marks_coord[0:][2])
-    shifted_pose_marks_coord[0:][2] = z_shift(shifted_pose_marks_coord[0:][2])
-
     shifted_left_hand_marks_coord[np.isnan(shifted_left_hand_marks_coord)] = 0
     shifted_right_hand_marks_coord[np.isnan(shifted_right_hand_marks_coord)] = 0
     shifted_pose_marks_coord[np.isnan(shifted_pose_marks_coord)] = 0
 
     return list(shifted_pose_marks_coord.flatten()) + list(shifted_right_hand_marks_coord.flatten()) + list(shifted_left_hand_marks_coord.flatten())
 
-def z_shift(my_array):  #fonction qui prend les coordonnées en z et renvoie juste le décalage entre deux frames
-    length = len(my_array)
-    new_array = np.zeros(length)
-    for i in range(1,length):
-        new_array[i] = my_array[i] - my_array[i-1]
+def z_shift(my_array):  #fonction qui prend les coordonnées et renvoie le même array avec le décalage en z entre les frames
+    length = int(len(my_array)/NB_COORDONNEES_TOTALES)
+    print(length, len(my_array))
+    new_array = my_array
+    for i in range(NB_COORDONNEES_TOTALES):
+        #new_array[i] = 0 tous les 3 points
+        if i%3 == 2:
+            new_array[i] = 0
+    for i in range(1, length):
+        for j in range (NB_COORDONNEES_TOTALES):
+            if j%3 == 2:
+                new_array[i*NB_COORDONNEES_TOTALES+j] = my_array[i*NB_COORDONNEES_TOTALES+j] - my_array[(i-1)*NB_COORDONNEES_TOTALES+j]
     return new_array
 
 # --------------------------------------------------- Implémentation de la standardisation ------------------------------------------------------- #
@@ -232,7 +233,8 @@ def main_loop_wait(nb_frames, names, model, mean, std): # Première version de l
             sequence.append(keypoints)
             res = ' '
             if len(sequence) == nb_frames:
-                prediction = np.array(sequence).flatten().reshape(1, -1)
+
+                prediction = z_shift(np.array(sequence).flatten()).reshape(1, -1)
                # prediction = standardize_row(prediction, mean, std)
                 predictions_df = pd.DataFrame(data = prediction, columns = names)
                 res = model.predict(predictions_df)[0]
