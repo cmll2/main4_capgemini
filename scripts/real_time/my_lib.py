@@ -17,6 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_score, recall_score, f1_score
 mp_drawing = mp.solutions.drawing_utils  # Drawing helpers
 mp_holistic = mp.solutions.holistic  # Mediapipe Solutions
+from sklearn.preprocessing import StandardScaler
 
 # ----------------------------------------- Variables ---------------------------------------------- #
 
@@ -50,8 +51,8 @@ def clf_results(X_test, y_test, model): #résultats du modèle
 
 def initialisation(my_dataframe): #initialisation du classifieur
     df = my_dataframe
+    df.fillna(0, inplace=True)
     NB_FRAMES = int((len(df.columns) - 1) / NB_COORDONNEES_TOTALES)
-    df =df.fillna(0)
     Y = df[['class']]
     X = df.iloc[:, 1:len(df.columns)]
     X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, random_state=27, stratify=Y)
@@ -103,7 +104,7 @@ def extract_keypoints(results): #Fonction pour extraire les coordonnées des poi
 
 # --------------------------------------- Boucle en temps réel ------------------------------------- #
 
-def main_loop(nb_frames, names, model): # Première version de la boucle en temps réel
+def main_loop(nb_frames, names, model, mean, std): # Première version de la boucle en temps réel
     sequence = []
     predictions = []
     cap = cv2.VideoCapture(0)
@@ -124,9 +125,10 @@ def main_loop(nb_frames, names, model): # Première version de la boucle en temp
             res = ' '
             if len(sequence) == nb_frames:
                 prediction = np.array(sequence).flatten().reshape(1, -1)
+                prediction = standardize_row(prediction, mean, std)
                 predictions_df = pd.DataFrame(data = prediction, columns = names)
                 res = model.predict(predictions_df)[0]
-                # print(model.predict_proba(predictions_df)[0])
+                #print(model.predict_proba(predictions_df)[0])
             cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
             cv2.putText(image, ' '.join(res), (3,30), 
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)           
@@ -169,33 +171,95 @@ def extract_and_normalize_keypoints(results):
     shifted_left_hand_marks_coord[0:][1] = shifted_left_hand_marks_coord[0:][1]/y_nez
     shifted_pose_marks_coord[0:][1] = shifted_pose_marks_coord[0:][1]/y_nez
 
-    #on normalise les coordonnées z par le décalage en espace entre deux frames
-
-    shifted_right_hand_marks_coord[0:][2] = z_shift(shifted_right_hand_marks_coord[0:][2])
-    shifted_left_hand_marks_coord[0:][2] = z_shift(shifted_left_hand_marks_coord[0:][2])
-    shifted_pose_marks_coord[0:][2] = z_shift(shifted_pose_marks_coord[0:][2])
-
     shifted_left_hand_marks_coord[np.isnan(shifted_left_hand_marks_coord)] = 0
     shifted_right_hand_marks_coord[np.isnan(shifted_right_hand_marks_coord)] = 0
     shifted_pose_marks_coord[np.isnan(shifted_pose_marks_coord)] = 0
 
     return list(shifted_pose_marks_coord.flatten()) + list(shifted_right_hand_marks_coord.flatten()) + list(shifted_left_hand_marks_coord.flatten())
 
-def z_shift(my_array):  #fonction qui prend les coordonnées en z et renvoie juste le décalage entre deux frames
-    length = len(my_array)
-    new_array = np.zeros(length)
-    for i in range(1,length):
-        new_array[i] = my_array[i] - my_array[i-1]
+def z_shift(my_array):  #fonction qui prend les coordonnées et renvoie le même array avec le décalage en z entre les frames
+    length = int(len(my_array)/NB_COORDONNEES_TOTALES)
+    print(length, len(my_array))
+    new_array = my_array
+    for i in range(NB_COORDONNEES_TOTALES):
+        #new_array[i] = 0 tous les 3 points
+        if i%3 == 2:
+            new_array[i] = 0
+    for i in range(1, length):
+        for j in range (NB_COORDONNEES_TOTALES):
+            if j%3 == 2:
+                new_array[i*NB_COORDONNEES_TOTALES+j] = my_array[i*NB_COORDONNEES_TOTALES+j] - my_array[(i-1)*NB_COORDONNEES_TOTALES+j]
     return new_array
 
 # --------------------------------------------------- Implémentation de la standardisation ------------------------------------------------------- #
 
-def standardize(df):
-    df_standardized = df.copy()
-    mean = []
-    std = []
-    for column in df_standardized.columns[1:]:
-        mean.append(df_standardized[column][:1].mean())
-        std.append(df_standardized[column][:1].std())
-        df_standardized[column][:1] = (df_standardized[column][:1] - df_standardized[column][:1].mean()) / df_standardized[column][:1].std()
-    return df_standardized, mean, std
+def standardize_df(df):
+    Y = df[['class']]
+    X=df.iloc[:, 1:len(df.columns)]
+    df.fillna(0, inplace=True)
+    scaler = StandardScaler()
+    scaler.fit_transform(X)
+    mean=scaler.mean_
+    std=scaler.var_
+    newX=scaler.transform(X)
+    tableau=np.hstack((Y,newX))
+    #creer un dataframe avec les nouvelles valeurs, toujours les mêmes classes et les mêmes noms de colonnes
+    newdf=pd.DataFrame(tableau, columns=df.columns)
+    return newdf,mean,std
+
+def standardize_row(row, mean, std):
+    for i in range(0,len(row)):
+        row[i] = (row[i] - mean[i]) / std[i] if not std[i] == 0 else 0
+    return row
+
+# ----------------------------------------------------------------- loop with wait keys ------------------------------------------------------------ #
+
+def main_loop_wait(nb_frames, names, model, mean, std): # Première version de la boucle en temps réel
+    sequence = []
+    predictions = []
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
+    # Set mediapipe model 
+    with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+        while cap.isOpened():
+            # Read feed
+            ret, frame = cap.read()
+            # Make detections
+            image, results = mediapipe_detection(frame, holistic)
+            # Draw landmarks
+            draw_styled_landmarks(image, results)
+            # 2. Prediction logic
+            keypoints = extract_and_normalize_keypoints(results)
+            sequence.append(keypoints)
+            res = ' '
+            if len(sequence) == nb_frames:
+
+                prediction = z_shift(np.array(sequence).flatten()).reshape(1, -1)
+               # prediction = standardize_row(prediction, mean, std)
+                predictions_df = pd.DataFrame(data = prediction, columns = names)
+                res = model.predict(predictions_df)[0]
+                sequence = []
+            #wait logic
+            if res != ' ':
+                cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
+                cv2.putText(image, ' '.join("mot : " + res), (3,30), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA) 
+                cv2.imshow('OpenCV Feed', image) 
+                cv2.waitKey(1000)
+                cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
+                cv2.putText(image, ' '.join("Signez bientot"), (3,30), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+                cv2.imshow('OpenCV Feed', image) 
+                cv2.waitKey(700)
+                res = ' '
+            else :
+                cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
+                cv2.putText(image, ' '.join("Signez"), (3,30), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA) 
+                cv2.imshow('OpenCV Feed', image)
+            # Show to screen
+            # Break gracefully
+            if cv2.waitKey(10) & 0xFF == ord('q'):
+                break
+        cap.release()
+        cv2.destroyAllWindows()

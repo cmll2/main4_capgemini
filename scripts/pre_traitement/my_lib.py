@@ -14,6 +14,7 @@ from decimal import *
 mp_drawing = mp.solutions.drawing_utils  # Drawing helpers
 mp_holistic = mp.solutions.holistic  # Mediapipe Solutions
 NB_COORDS = 75
+NB_COORDONNEES_TOTALES = NB_COORDS * 3 # nombre de coordonnées totales
 getcontext().prec = 4
 
 # -------------------------------------------------------- ANALYSE UTILISATEUR---------------------------------------------------------------------------- #
@@ -103,6 +104,7 @@ def analyze_frame(video, sec): #fonction qui analyse une frame d'une vidéo à u
 
 def extract_keypoints(results): #Fonction qui extrait les coordonnées des points d'intérêt
     pose = list(np.array([[res.x, res.y, res.z] for res in results.pose_landmarks.landmark]).flatten() if results.pose_landmarks else np.zeros(33*3))
+    pose = list(np.array([[res.x, res.y, res.z] for res in results.pose_landmarks.landmark]).flatten() if results.pose_landmarks else np.zeros(33*3))
     #face = np.array([[res.x, res.y, res.z] for res in results.face_landmarks.landmark]).flatten() if results.face_landmarks else np.zeros(468*3)
     lh = list(np.array([[res.x, res.y, res.z] for res in results.left_hand_landmarks.landmark]).flatten() if results.left_hand_landmarks else np.zeros(21*3))
     rh = list(np.array([[res.x, res.y, res.z] for res in results.right_hand_landmarks.landmark]).flatten() if results.right_hand_landmarks else np.zeros(21*3))
@@ -164,12 +166,6 @@ def extract_and_normalize_keypoints(image):
     shifted_left_hand_marks_coord[0:][1] = shifted_left_hand_marks_coord[0:][1]/y_nez
     shifted_pose_marks_coord[0:][1] = shifted_pose_marks_coord[0:][1]/y_nez
 
-    #on normalise les coordonnées z par le décalage en espace entre deux frames
-
-    shifted_right_hand_marks_coord[0:][2] = z_shift(shifted_right_hand_marks_coord[0:][2])
-    shifted_left_hand_marks_coord[0:][2] = z_shift(shifted_left_hand_marks_coord[0:][2])
-    shifted_pose_marks_coord[0:][2] = z_shift(shifted_pose_marks_coord[0:][2])
-
     return list(shifted_pose_marks_coord.flatten()) + list(shifted_right_hand_marks_coord.flatten()) + list(shifted_left_hand_marks_coord.flatten())
 
 def analyze_normalized_frame(video, sec): #fonction qui analyse une frame d'une vidéo à un temps donné
@@ -197,15 +193,22 @@ def main_loop_normalize(fichiers, nb_frame, my_csv): #fonction qui fait la boucl
             success, extracted_coords = analyze_normalized_frame(video, sec)
             if success :
                 results += extracted_coords
+        results = z_shift(results)
         results.insert(0, mot)
         with open(my_csv, mode='a', newline='') as f:
                 csv_writer = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
                 csv_writer.writerow(results)
     return my_csv
 
-def z_shift(my_array):  #fonction qui prend les coordonnées en z et renvoie juste le décalage entre deux frames
-    length = len(my_array)
-    new_array = np.zeros(length)
-    for i in range(1,length):
-        new_array[i] = my_array[i] - my_array[i-1]
+def z_shift(my_array):  #fonction qui prend les coordonnées et renvoie le même array avec le décalage en z entre les frames
+    length = int(len(my_array)/NB_COORDONNEES_TOTALES)
+    print(length, len(my_array))
+    new_array = my_array
+    for i in range(NB_COORDONNEES_TOTALES):
+        if i%3 == 2:
+            new_array[i] = 0
+    for i in range(1, length):
+        for j in range (NB_COORDONNEES_TOTALES):
+            if j%3 == 2:
+                new_array[i*NB_COORDONNEES_TOTALES+j] = my_array[i*NB_COORDONNEES_TOTALES+j] - my_array[(i-1)*NB_COORDONNEES_TOTALES+j]
     return new_array
